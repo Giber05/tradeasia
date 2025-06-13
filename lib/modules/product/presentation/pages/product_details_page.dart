@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_html/flutter_html.dart';
 import 'package:trade_asia/infrastructure/architecture/cubit_state.dart';
 import 'package:trade_asia/infrastructure/components/error_state_widgets.dart' as enhanced;
 import 'package:trade_asia/infrastructure/components/network_image_widget.dart';
@@ -352,7 +353,7 @@ class ProductDetailsView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          Text(productDetail.description, style: const TextStyle(fontSize: 14, color: Color(0xFF87888A), height: 1.6)),
+          _buildHtmlOrText(productDetail.description),
         ],
       ),
     );
@@ -376,10 +377,32 @@ class ProductDetailsView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          Text(productDetail.application, style: const TextStyle(fontSize: 14, color: Color(0xFF87888A), height: 1.6)),
+          _buildHtmlOrText(productDetail.application),
         ],
       ),
     );
+  }
+
+  Widget _buildHtmlOrText(String content) {
+    // Check if the content contains HTML tags
+    if (content.contains('<') && content.contains('>')) {
+      return Html(
+        data: content,
+        style: {
+          "body": Style(
+            margin: Margins.zero,
+            padding: HtmlPaddings.zero,
+            fontSize: FontSize(14),
+            color: const Color(0xFF87888A),
+            lineHeight: const LineHeight(1.6),
+          ),
+          "p": Style(margin: Margins.only(bottom: 8)),
+          "br": Style(fontSize: FontSize(14)),
+        },
+      );
+    } else {
+      return Text(content, style: const TextStyle(fontSize: 14, color: Color(0xFF87888A), height: 1.6));
+    }
   }
 
   Widget _buildRelatedProductsCard(BuildContext context, ProductDetail productDetail) {

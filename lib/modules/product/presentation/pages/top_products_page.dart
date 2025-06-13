@@ -217,14 +217,19 @@ class _TopProductsViewState extends State<TopProductsView> {
       );
     }
 
+    // Responsive grid based on screen width
+    final screenWidth = MediaQuery.of(context).size.width;
+    final crossAxisCount = screenWidth > 600 ? 3 : 2; // 3 columns for tablets, 2 for phones
+    final childAspectRatio = screenWidth > 600 ? 0.8 : 0.72; // Adjust aspect ratio for different screens
+
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0), // Reduced horizontal padding for mobile
       sliver: SliverGrid(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.75,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          childAspectRatio: childAspectRatio,
+          crossAxisSpacing: 12, // Reduced spacing for mobile
+          mainAxisSpacing: 12,
         ),
         delegate: SliverChildBuilderDelegate((context, index) {
           final product = products[index];
