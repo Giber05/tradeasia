@@ -93,3 +93,7 @@ coverage/
 # Test coverage
 coverage/
 lcov.info
+
+# Development documentation (private)
+development_tasks.md
+prd.md
