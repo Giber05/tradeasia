@@ -2,6 +2,18 @@
 
 A modern Flutter mobile application for Tradeasia International, showcasing top chemical products with a clean, professional design.
 
+## 📱 Download & Demo
+
+### 🔗 **Ready-to-Install App**
+
+📦 **[Download APK](https://drive.google.com/file/d/1mMuyHCHh33891Q6oxGhVAfO1Niv_RLy5/view?usp=sharing)** - Android installation package ready for testing
+
+### 🎥 **Live Demo Video**
+
+🎬 **[Watch Demo](https://drive.google.com/file/d/1AxOu6We33Vlfbeo4EPjlA_o2_tg5bY5P/view?usp=sharing)** - Complete app walkthrough and features showcase
+
+---
+
 ## 🚀 Features
 
 ### ✅ **Completed Features**

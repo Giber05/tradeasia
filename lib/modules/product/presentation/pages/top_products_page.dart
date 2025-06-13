@@ -2,9 +2,9 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:trade_asia/infrastructure/architecture/cubit_state.dart';
+import 'package:trade_asia/infrastructure/service_locator/service_locator.dart';
 import 'package:trade_asia/infrastructure/components/error_state_widgets.dart';
 import 'package:trade_asia/infrastructure/router/router.gr.dart';
-import 'package:trade_asia/infrastructure/service_locator/service_locator.dart';
 import 'package:trade_asia/infrastructure/services/connectivity_service.dart';
 import 'package:trade_asia/modules/product/domain/entities/product.dart';
 import 'package:trade_asia/modules/product/presentation/cubit/top_products_cubit.dart';
@@ -12,161 +12,139 @@ import 'package:trade_asia/modules/product/presentation/widgets/product_card.dar
 import 'package:trade_asia/modules/product/presentation/widgets/product_skeleton.dart';
 
 @RoutePage()
-class TopProductsPage extends StatelessWidget {
+class TopProductsPage extends StatefulWidget {
   const TopProductsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return BlocProvider(create: (context) => getIt<TopProductsCubit>()..loadData(), child: const TopProductsView());
-  }
+  State<TopProductsPage> createState() => _TopProductsPageState();
 }
 
-class TopProductsView extends StatefulWidget {
-  const TopProductsView({super.key});
-
-  @override
-  State<TopProductsView> createState() => _TopProductsViewState();
-}
-
-class _TopProductsViewState extends State<TopProductsView> {
-  late final ConnectivityService _connectivityService;
+class _TopProductsPageState extends State<TopProductsPage> {
+  late final TopProductsCubit _cubit;
+  late final TextEditingController _searchController;
   bool _isConnected = true;
 
   @override
   void initState() {
     super.initState();
-    _connectivityService = getIt<ConnectivityService>();
+    _cubit = getIt<TopProductsCubit>();
+    _searchController = TextEditingController();
     _initConnectivity();
+    _cubit.loadData();
   }
 
-  void _initConnectivity() {
-    _connectivityService.checkConnectivity().then((isConnected) {
+  void _initConnectivity() async {
+    try {
+      final connectivityService = getIt<ConnectivityService>();
+      final isConnected = await connectivityService.checkConnectivity();
       if (mounted) {
         setState(() {
           _isConnected = isConnected;
         });
       }
-    });
 
-    _connectivityService.isConnected.listen((isConnected) {
-      if (mounted) {
-        setState(() {
-          _isConnected = isConnected;
-        });
-      }
-    });
+      connectivityService.isConnected.listen((isConnected) {
+        if (mounted) {
+          setState(() {
+            _isConnected = isConnected;
+          });
+        }
+      });
+    } catch (e) {
+      // If connectivity service is not available, assume connected
+      _isConnected = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF6F6F6),
-      body: ConnectivityIndicator(
-        isConnected: _isConnected,
-        child: CustomScrollView(
-          slivers: [
-            // Modern App Bar with Hero Section
-            _buildSliverAppBar(context),
-
-            // Search Bar
-            _buildSearchSection(context),
-
-            // Products Grid
-            BlocBuilder<TopProductsCubit, CubitState<List<Product>>>(
-              builder: (context, state) {
-                return switch (state) {
-                  CubitLoadingState() => SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                    sliver: SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.75,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                      ),
-                      delegate: SliverChildBuilderDelegate((context, index) => const ProductSkeleton(), childCount: 6),
-                    ),
-                  ),
-                  CubitSuccessState(data: final products) => _buildProductsGrid(context, products, state.isRefreshing),
-                  CubitErrorState(exception: final exception, onRetry: final onRetry) => SliverFillRemaining(
-                    child: ErrorStateWidget(
-                      title: 'Something went wrong',
-                      message: exception.message,
-                      onRetry: onRetry,
-                    ),
-                  ),
-                };
-              },
-            ),
-
-            // Bottom spacing
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
-          ],
+    return BlocProvider.value(
+      value: _cubit,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FA),
+        body: ConnectivityIndicator(
+          isConnected: _isConnected,
+          child: CustomScrollView(
+            slivers: [
+              _buildAppBar(context),
+              _buildSearchSection(context),
+              BlocBuilder<TopProductsCubit, CubitState<List<Product>>>(
+                builder: (context, state) {
+                  return switch (state) {
+                    CubitLoadingState() => _buildSkeletonGrid(context),
+                    CubitSuccessState() => _buildProductsGrid(context, state.data, state.isRefreshing),
+                    CubitErrorState() => _buildErrorSection(context, state),
+                  };
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSliverAppBar(BuildContext context) {
+  Widget _buildAppBar(BuildContext context) {
     return SliverAppBar(
       expandedHeight: 200,
       floating: false,
       pinned: true,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      leading: IconButton(
-        onPressed: () => context.router.maybePop(),
-        icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-      ),
-      actions: [
-        IconButton(
-          onPressed: () {
-            // Shopping cart action
-          },
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: const Color(0xFF1BA2CA), borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.shopping_cart_outlined, color: Colors.white, size: 20),
-          ),
-        ),
-        const SizedBox(width: 16),
-      ],
+      backgroundColor: const Color(0xFF17234D),
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF1BA2CA), Color(0xFF177AA4), Color(0xFF144D79), Color(0xFF123C69)],
+              colors: [Color(0xFF17234D), Color(0xFF123C69), Color(0xFF0A5A8A)],
+              stops: [0.0, 0.6, 1.0],
             ),
           ),
           child: Stack(
             children: [
               // Background pattern
-              Positioned.fill(
-                child: Opacity(opacity: 0.1, child: CustomPaint(painter: ChemicalPatternPainter(), child: Container())),
-              ),
-
+              Positioned.fill(child: CustomPaint(painter: ChemicalPatternPainter())),
               // Content
-              Positioned(
-                left: 20,
-                right: 20,
-                bottom: 30,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Our Top Products',
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: Colors.white, height: 1.2),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'We are dedicated to delivering the best service to our customers by offering required quality chemical products',
-                      style: TextStyle(fontSize: 14, color: Colors.white, height: 1.4),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'TRADEASIA',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'TOP PRODUCTS',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white70,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Discover our premium chemical products sourced from trusted suppliers worldwide.',
+                        style: TextStyle(fontSize: 14, color: Colors.white, height: 1.4),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -180,27 +158,66 @@ class _TopProductsViewState extends State<TopProductsView> {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE5E7E9), width: 1),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
-            ],
-          ),
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'Search products...',
-              hintStyle: const TextStyle(color: Color(0xFF87888A), fontSize: 14),
-              prefixIcon: const Icon(Icons.search, color: Color(0xFF17234D), size: 20),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE5E7E9), width: 1),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search products...',
+                    hintStyle: const TextStyle(color: Color(0xFF87888A), fontSize: 14),
+                    prefixIcon: const Icon(Icons.search, color: Color(0xFF17234D), size: 20),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  ),
+                  onChanged: (value) {
+                    _cubit.searchProducts(value);
+                  },
+                ),
+              ),
             ),
-            onChanged: (value) {
-              // Implement search functionality
-            },
-          ),
+            if (_cubit.isSearchActive) ...[
+              const SizedBox(width: 8),
+              Container(
+                decoration: BoxDecoration(color: const Color(0xFF17234D), borderRadius: BorderRadius.circular(12)),
+                child: IconButton(
+                  onPressed: () {
+                    _searchController.clear();
+                    _cubit.clearSearch();
+                  },
+                  icon: const Icon(Icons.clear, color: Colors.white, size: 20),
+                  tooltip: 'Clear search',
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkeletonGrid(BuildContext context) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.72,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => const ProductSkeleton(),
+          childCount: 6, // Show 6 skeleton items
         ),
       ),
     );
@@ -208,11 +225,15 @@ class _TopProductsViewState extends State<TopProductsView> {
 
   Widget _buildProductsGrid(BuildContext context, List<Product> products, bool isRefreshing) {
     if (products.isEmpty) {
-      return const SliverFillRemaining(
+      final isSearching = _cubit.isSearchActive;
+      return SliverFillRemaining(
         child: EmptyStateWidget(
-          title: 'No Products Found',
-          message: 'We couldn\'t find any products at the moment. Please try again later.',
-          icon: Icons.inventory_2_outlined,
+          title: isSearching ? 'No Products Found' : 'No Products Available',
+          message:
+              isSearching
+                  ? 'No products match your search "${_cubit.currentSearchQuery}". Try different keywords.'
+                  : 'We couldn\'t find any products at the moment. Please try again later.',
+          icon: isSearching ? Icons.search_off : Icons.inventory_2_outlined,
         ),
       );
     }
@@ -246,6 +267,44 @@ class _TopProductsViewState extends State<TopProductsView> {
             },
           );
         }, childCount: products.length),
+      ),
+    );
+  }
+
+  Widget _buildErrorSection(BuildContext context, CubitErrorState<List<Product>> state) {
+    return SliverFillRemaining(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
+              const SizedBox(height: 16),
+              Text(
+                'Error Loading Products',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                state.exception.message,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: state.onRetry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF123C69),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
