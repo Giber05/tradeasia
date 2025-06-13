@@ -56,12 +56,12 @@ class ProductCard extends StatelessWidget {
   Widget _buildProductImage(BuildContext context, double cardWidth) {
     return SizedBox(
       width: double.infinity,
-      height: 100, // Fixed height to prevent overflow
+      height: 90, // Reduced height to prevent overflow
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: ProductImageWidget(
           imageUrl: product.productImage,
-          height: 100,
+          height: 90,
           width: cardWidth - 24, // Account for card padding
         ),
       ),
@@ -109,9 +109,7 @@ class ProductCard extends StatelessWidget {
         if (product.casNumber.isNotEmpty) _buildInfoRow(context, 'CAS:', product.casNumber),
         if (product.casNumber.isNotEmpty && product.hsCode.isNotEmpty) const SizedBox(height: 4),
         if (product.hsCode.isNotEmpty) _buildInfoRow(context, 'HS Code:', product.hsCode),
-        if ((product.casNumber.isNotEmpty || product.hsCode.isNotEmpty) && product.formula.isNotEmpty)
-          const SizedBox(height: 4),
-        if (product.formula.isNotEmpty) _buildInfoRow(context, 'Formula:', product.formula),
+        // Formula removed to prevent overflow on mobile cards
       ],
     );
   }
